@@ -18,7 +18,7 @@ namespace ImportDataToDB.Repository
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer("Server=localhost;Database=StudentResultDB;User Id=sa;Password=12345;");
+            optionsBuilder.UseSqlServer("Server=localhost;Database=StudentResultDB;User Id=sa;Password=12345;Integrated Security=True;");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
