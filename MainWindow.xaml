@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Import Data to Database Application" Height="450" Width="800">
     <Grid>
-        <ComboBox x:Name="cbYear" HorizontalAlignment="Center" Margin="0,50,0,0" VerticalAlignment="Top" Width="400" Height="30"/>
+        <ComboBox x:Name="cbYear" HorizontalAlignment="Center" Margin="0,50,0,0" VerticalAlignment="Top" Width="400" Height="30" SelectionChanged="ComboBoxSchoolYears_SelectionChanged"/>
         <TextBox x:Name="txtPath" HorizontalAlignment="Left" Margin="200,135,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="320" Height="30" FontSize="15" IsReadOnly="True"/>
         <Button x:Name="btnBrowse" Content="Browse" HorizontalAlignment="Left" Margin="525,135,0,0" VerticalAlignment="Top" Height="30" Width="75" FontSize="15" FontWeight="Bold" Click="btnBrowse_Click"/>
         <Button x:Name="btnImport" Content="Import" HorizontalAlignment="Left" Margin="250,217,0,0" VerticalAlignment="Top" Width="75" Height="30" FontSize="15" FontWeight="Bold" Click="btnImport_Click"/>

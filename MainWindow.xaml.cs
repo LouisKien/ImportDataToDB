@@ -25,6 +25,7 @@ namespace ImportDataToDB
         private List<string[]> csvData = new List<string[]>();
         List<string> comboBoxItems = new List<string>();
         private List<string[]> importedItems = new List<string[]>();
+        private string selectedYear;
         public MainWindow()
         {
             InitializeComponent();
@@ -89,7 +90,10 @@ namespace ImportDataToDB
             importedItems.Clear();
             for(int i = 0; i < csvData.Count; i++)
             {
-                importedItems.Add(csvData[i]);
+                if (csvData[i][6].Equals(this.selectedYear))
+                {
+                    importedItems.Add(csvData[i]);
+                }
             }
             AddDataToDatabase(importedItems);
         }
@@ -111,15 +115,15 @@ namespace ImportDataToDB
                 // Create a list of subjects
                 List<Subject> subjects = new List<Subject>
                 {
-                    new Subject { Code = "Math", Name = importedItems[0][1] },
-                    new Subject { Code = "Literature", Name = importedItems[0][2] },
-                    new Subject { Code = "Physics", Name = importedItems[0][3] },
-                    new Subject { Code = "Biology", Name = importedItems[0][4] },
-                    new Subject { Code = "ForeignLanguage", Name = importedItems[0][5] },
-                    new Subject { Code = "Chemistry", Name = importedItems[0][7] },
-                    new Subject { Code = "History", Name = importedItems[0][8] },
-                    new Subject { Code = "Geography", Name = importedItems[0][9] },
-                    new Subject { Code = "CivicEducation", Name = importedItems[0][10] },
+                    new Subject { Code = "Math", Name = csvData[0][1] },
+                    new Subject { Code = "Literature", Name = csvData[0][2] },
+                    new Subject { Code = "Physics", Name = csvData[0][3] },
+                    new Subject { Code = "Biology", Name = csvData[0][4] },
+                    new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+                    new Subject { Code = "Chemistry", Name = csvData[0][7] },
+                    new Subject { Code = "History", Name = csvData[0][8] },
+                    new Subject { Code = "Geography", Name = csvData[0][9] },
+                    new Subject { Code = "CivicEducation", Name = csvData[0][10] },
                 };
 
                 foreach (var subject in subjects)
@@ -146,8 +150,11 @@ namespace ImportDataToDB
                 // Save changes to commit the subjects to the database
                 context.SaveChanges();
 
+                // Fetch all subjects from the database
+                List<Subject> allSubjects = context.Subjects.ToList();
+
                 // Skip the header row and iterate over the student rows
-                foreach (var row in csvData.Skip(1))
+                foreach (var row in importedItems)
                 {
                     var student = new Student
                     {
@@ -166,40 +173,46 @@ namespace ImportDataToDB
                             {
                                 rowScore = double.Parse(row[i]);
                             }
+
+                            // Assuming subjects is a List<Subject> to store the fetched subjects
+                            Subject subjectToAdd;
+
                             if (i > 6)
                             {
-                                var score = new Score
-                                {
-                                    Result = rowScore,
-                                    Student = student,
-                                    Subject = subjects[i - 2]
-                                };
-
-                                context.Scores.Add(score);
+                                // Retrieve the subject from the list based on the index
+                                subjectToAdd = allSubjects[i - 2];
                             }
                             else
                             {
-                                var score = new Score
-                                {
-                                    Result = rowScore,
-                                    Student = student,
-                                    Subject = subjects[i - 1]
-                                };
-
-                                context.Scores.Add(score);
+                                // Retrieve the subject from the list based on the index
+                                subjectToAdd = allSubjects[i - 1];
                             }
+
+                            var score = new Score
+                            {
+                                Result = rowScore,
+                                Student = student,
+                                Subject = subjectToAdd
+                            };
+
+                            context.Scores.Add(score);
                         }
                     }
                     context.SaveChanges();
                 }
             }
-            MessageBox.Show("Data saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Data of {this.selectedYear} saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
         }
         private void btnClear_Click(object sender, RoutedEventArgs e)
         {
+            if (txtPath.Text.Equals(""))
+            {
+                MessageBox.Show("Please select .csv file to import.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             // Assuming your ComboBox is named comboBoxYear
-            var selectedYear = cbYear.Text;
+            var selectedYear = this.selectedYear;
 
             if (string.IsNullOrEmpty(selectedYear))
             {
@@ -239,6 +252,11 @@ namespace ImportDataToDB
                 }
             }
             MessageBox.Show($"All data of {cbYear.Text} has been deleted.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void ComboBoxSchoolYears_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Get the selected SchoolYear as a string from the ComboBox
+            selectedYear = cbYear.SelectedItem as string;
         }
     }
 }
