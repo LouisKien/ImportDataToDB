@@ -65,33 +65,40 @@ namespace ImportDataToDB
         private List<string[]> ReadCsv(string filePath)
         {
             var csvData = new List<string[]>();
-            var uniqueComboBoxItems = new HashSet<string>(comboBoxItems);
+            var uniqueComboBoxItems = new HashSet<string>(comboBoxItems); // Ensure uniqueness
 
             object lockObject = new object();
 
-            // Read lines in parallel
-            Parallel.ForEach(File.ReadLines(filePath), line =>
+            // Read all lines
+            var allLines = File.ReadAllLines(filePath);
+
+            // Handle header separately
+            if (allLines.Length > 0)
+            {
+                var header = allLines[0].Split(',');
+                csvData.Add(header);
+            }
+
+            // Read remaining lines in parallel
+            Parallel.ForEach(allLines.Skip(1), line =>
             {
                 // Parse fields from the line
                 var fields = line.Split(',');
 
-                // Check and add the unique item to comboBoxItems
-                if (fields.Length > 6 && !uniqueComboBoxItems.Contains(fields[6]) && fields[6] != "Year")
-                {
-                    lock (lockObject)
-                    {
-                        comboBoxItems.Add(fields[6]);
-                        uniqueComboBoxItems.Add(fields[6]);
-                    }
-                }
-
-                // Add the fields to csvData
+                // Use a lock to ensure thread safety when modifying collections
                 lock (lockObject)
                 {
+                    // Add the fields to csvData
                     csvData.Add(fields);
+
+                    // Add the unique item to comboBoxItems
+                    if (fields.Length > 6 && !uniqueComboBoxItems.Contains(fields[6]) && fields[6] != "Year")
+                    {
+                        uniqueComboBoxItems.Add(fields[6]);
+                        comboBoxItems.Add(fields[6]);
+                    }
                 }
             });
-
             return csvData;
         }
 
