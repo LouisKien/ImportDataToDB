@@ -107,34 +107,47 @@ namespace ImportDataToDB
             TimeSpan ts = stopWatch.Elapsed;
 
             // Format and display the TimeSpan value.
-            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-                ts.Hours, ts.Minutes, ts.Seconds,
-                ts.Milliseconds / 10);
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
             MessageBox.Show($"RunTime + {elapsedTime}");
         }
 
         private void AddDataToDatabase(List<string[]> importedItems)
         {
+            // Improve performance using Z.EntityFramework.Extensions.EF
             using (var context = new MyDbContext())
             {
-                string schoolYearName = importedItems[1][6];
-
                 // Check if the SchoolYear with the given name already exists
+                string schoolYearName = importedItems[1][6];
                 if (context.SchoolYears.Any(sy => sy.Name == schoolYearName))
                 {
                     MessageBox.Show($"Data in '{schoolYearName}' already exists, you can clear and import again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
-                // Create a DataTable for scores
-                var dataTable = new System.Data.DataTable();
-                dataTable.Columns.Add("Result", typeof(double));
-                dataTable.Columns.Add("StudentId", typeof(int));
-                dataTable.Columns.Add("SubjectId", typeof(int));
+                // Create a list of subjects
+                List<Subject> subjects = new List<Subject>
+                {
+                    new Subject { Code = "Math", Name = csvData[0][1] },
+                    new Subject { Code = "Literature", Name = csvData[0][2] },
+                    new Subject { Code = "Physics", Name = csvData[0][3] },
+                    new Subject { Code = "Biology", Name = csvData[0][4] },
+                    new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+                    new Subject { Code = "Chemistry", Name = csvData[0][7] },
+                    new Subject { Code = "History", Name = csvData[0][8] },
+                    new Subject { Code = "Geography", Name = csvData[0][9] },
+                    new Subject { Code = "CivicEducation", Name = csvData[0][10] },
+                };
 
-                // Fetch all subjects from the database
-                Dictionary<string, int> subjectIdMap = context.Subjects.ToDictionary(s => s.Code, s => s.Id);
+                // Check and add subjects
+                foreach (var subject in subjects)
+                {
+                    if (!context.Subjects.Any(s => s.Code == subject.Code))
+                    {
+                        context.Subjects.Add(subject);
+                    }
+                }
 
+                // Create a new school year
                 var schoolYear = new SchoolYear
                 {
                     Name = schoolYearName,
@@ -143,10 +156,17 @@ namespace ImportDataToDB
                 };
 
                 context.SchoolYears.Add(schoolYear);
+
+                // Save changes to commit the subjects and school year to the database
                 context.SaveChanges();
 
-                // Skip the header row and iterate over the student rows
-                foreach (var row in importedItems.Skip(1))
+                // Fetch all subjects from the database
+                List<Subject> allSubjects = context.Subjects.ToList();
+
+                var students = new List<Student>();
+                var scores = new List<Score>();
+
+                foreach (var row in importedItems)
                 {
                     var student = new Student
                     {
@@ -154,7 +174,7 @@ namespace ImportDataToDB
                         SchoolYear = schoolYear
                     };
 
-                    context.Students.Add(student);
+                    students.Add(student);
 
                     for (int i = 1; i <= 10; i++)
                     {
@@ -166,51 +186,29 @@ namespace ImportDataToDB
                                 rowScore = double.Parse(row[i]);
                             }
 
-                            if (subjectIdMap.TryGetValue(row[i], out int subjectId))
+                            // Assuming subjects is a List<Subject> to store the fetched subjects
+                            Subject subjectToAdd = i > 6 ? allSubjects[i - 2] : allSubjects[i - 1];
+
+                            var score = new Score
                             {
-                                dataTable.Rows.Add(rowScore, student.Id, subjectId);
-                            }
+                                Result = rowScore,
+                                Subject = subjectToAdd,
+                                Student = student
+                            };
+
+                            scores.Add(score);
                         }
-                    }
-
-                    if (dataTable.Rows.Count >= 5000)
-                    {
-                        // Use SqlBulkCopy to insert data in bulk
-                        using (var bulkCopy = new SqlBulkCopy(context.Database.GetDbConnection().ConnectionString))
-                        {
-                            bulkCopy.BatchSize = 5000;
-                            bulkCopy.DestinationTableName = "Scores";
-                            bulkCopy.ColumnMappings.Add("Result", "Result");
-                            bulkCopy.ColumnMappings.Add("StudentId", "StudentId");
-                            bulkCopy.ColumnMappings.Add("SubjectId", "SubjectId");
-
-                            bulkCopy.WriteToServer(dataTable);
-                        }
-
-                        dataTable.Rows.Clear();
                     }
                 }
 
-                if (dataTable.Rows.Count > 0)
-                {
-                    // Use SqlBulkCopy to insert the remaining data
-                    using (var bulkCopy = new SqlBulkCopy(context.Database.GetDbConnection().ConnectionString))
-                    {
-                        bulkCopy.BatchSize = 400;
-                        bulkCopy.DestinationTableName = "Scores";
-                        bulkCopy.ColumnMappings.Add("Result", "Result");
-                        bulkCopy.ColumnMappings.Add("StudentId", "StudentId");
-                        bulkCopy.ColumnMappings.Add("SubjectId", "SubjectId");
+                // Bulk insert students
+                context.BulkInsert(students);
 
-                        bulkCopy.WriteToServer(dataTable);
-                    }
-                }
+                // Bulk insert scores
+                context.BulkInsert(scores);
 
-                // Save changes to commit the students and scores to the database
-                context.SaveChanges();
+                MessageBox.Show($"Data of {schoolYearName} saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-
-            //MessageBox.Show($"Data of {this.selectedYear} saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void btnClear_Click(object sender, RoutedEventArgs e)
