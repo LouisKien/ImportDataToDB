@@ -108,7 +108,7 @@ namespace ImportDataToDB
 
             // Format and display the TimeSpan value.
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            MessageBox.Show($"RunTime + {elapsedTime}");
+            MessageBox.Show($"Insert time: {elapsedTime}");
         }
 
         private void AddDataToDatabase(List<string[]> importedItems)
@@ -218,6 +218,9 @@ namespace ImportDataToDB
                 MessageBox.Show("Please select .csv file to import.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             // Assuming your ComboBox is named comboBoxYear
             var selectedYear = this.selectedYear;
 
@@ -234,32 +237,47 @@ namespace ImportDataToDB
 
                 if (schoolYearToDelete != null)
                 {
-                    // Find all students associated with the SchoolYear
-                    var studentsToDelete = context.Students.Where(s => s.SchoolYearId == schoolYearToDelete.Id).ToList();
+                    // Increase command timeout
+                    context.Database.SetCommandTimeout(300); // Set a timeout in seconds (e.g., 300 seconds = 5 minutes)
 
-                    // Get the StudentId values from studentsToDelete
-                    var studentIdsToDelete = studentsToDelete.Select(student => student.Id).ToList();
-
-                    // Find all scores associated with the students
-                    var scoresToDelete = context.Scores
-                        .Where(score => studentIdsToDelete.Contains(score.StudentId))
+                    var studentIdsToDelete = context.Students
+                        .Where(s => s.SchoolYearId == schoolYearToDelete.Id)
+                        .Select(student => student.Id)
                         .ToList();
 
-                    // Remove scores
-                    context.Scores.RemoveRange(scoresToDelete);
+                    const int batchSize = 1000;
+                    var batches = (int)Math.Ceiling((double)studentIdsToDelete.Count / batchSize);
 
-                    // Remove students
-                    context.Students.RemoveRange(studentsToDelete);
+                    for (int i = 0; i < batches; i++)
+                    {
+                        var batchIds = studentIdsToDelete.Skip(i * batchSize).Take(batchSize).ToList();
 
-                    // Remove the SchoolYear
+                        // Delete scores in batch
+                        context.Scores.Where(s => batchIds.Contains(s.StudentId)).DeleteFromQuery();
+
+                        // Delete students in batch
+                        context.Students.Where(s => batchIds.Contains(s.Id)).DeleteFromQuery();
+                    }
+
+                    // Delete the SchoolYear
                     context.SchoolYears.Remove(schoolYearToDelete);
 
                     // Save changes to commit the deletions to the database
                     context.SaveChanges();
                 }
             }
+
             MessageBox.Show($"All data of {cbYear.Text} has been deleted.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            stopWatch.Stop();
+
+            // Get the elapsed time as a TimeSpan value.
+            TimeSpan ts = stopWatch.Elapsed;
+
+            // Format and display the TimeSpan value.
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+            MessageBox.Show($"Delete time: {elapsedTime}");
         }
+
         private void ComboBoxSchoolYears_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Get the selected SchoolYear as a string from the ComboBox
