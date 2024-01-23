@@ -6,6 +6,7 @@ using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -64,22 +65,33 @@ namespace ImportDataToDB
         private List<string[]> ReadCsv(string filePath)
         {
             var csvData = new List<string[]>();
+            var uniqueComboBoxItems = new HashSet<string>(comboBoxItems);
 
-            using (TextFieldParser parser = new TextFieldParser(filePath))
+            object lockObject = new object();
+
+            // Read lines in parallel
+            Parallel.ForEach(File.ReadLines(filePath), line =>
             {
-                parser.TextFieldType = FieldType.Delimited;
-                parser.SetDelimiters(",");
+                // Parse fields from the line
+                var fields = line.Split(',');
 
-                while (!parser.EndOfData)
+                // Check and add the unique item to comboBoxItems
+                if (fields.Length > 6 && !uniqueComboBoxItems.Contains(fields[6]) && fields[6] != "Year")
                 {
-                    string[] fields = parser.ReadFields();
-                    if (!comboBoxItems.Contains(fields[6]) && !fields[6].Equals("Year"))
+                    lock (lockObject)
                     {
                         comboBoxItems.Add(fields[6]);
+                        uniqueComboBoxItems.Add(fields[6]);
                     }
+                }
+
+                // Add the fields to csvData
+                lock (lockObject)
+                {
                     csvData.Add(fields);
                 }
-            }
+            });
+
             return csvData;
         }
 
@@ -116,6 +128,8 @@ namespace ImportDataToDB
             // Improve performance using Z.EntityFramework.Extensions.EF
             using (var context = new MyDbContext())
             {
+                // Disable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
                 // Check if the SchoolYear with the given name already exists
                 string schoolYearName = importedItems[1][6];
                 if (context.SchoolYears.Any(sy => sy.Name == schoolYearName))
@@ -206,6 +220,9 @@ namespace ImportDataToDB
 
                 // Bulk insert scores
                 context.BulkInsert(scores);
+
+                // Enable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
 
                 MessageBox.Show($"Data of {schoolYearName} saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
