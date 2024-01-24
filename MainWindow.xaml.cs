@@ -1,4 +1,5 @@
-﻿using ImportDataToDB.Entity;
+﻿using ImportDataToDB.Data;
+using ImportDataToDB.Entity;
 using ImportDataToDB.Repository;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Linq;
 
 
 namespace ImportDataToDB
@@ -30,6 +32,8 @@ namespace ImportDataToDB
         List<string> comboBoxItems = new List<string>();
         private List<string[]> importedItems = new List<string[]>();
         private string selectedYear;
+        private List<AnalyseData> datas = new List<AnalyseData>();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -117,6 +121,7 @@ namespace ImportDataToDB
                     importedItems.Add(csvData[i]);
                 }
             }
+            MessageBox.Show(importedItems[0][1].ToString());
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
             AddDataToDatabase(importedItems);
@@ -201,7 +206,7 @@ namespace ImportDataToDB
                     {
                         if (i != 6)
                         {
-                            double rowScore = 0;
+                            double rowScore = -1;
                             if (!row[i].Equals(""))
                             {
                                 rowScore = double.Parse(row[i]);
@@ -306,6 +311,190 @@ namespace ImportDataToDB
         {
             // Get the selected SchoolYear as a string from the ComboBox
             selectedYear = cbYear.SelectedItem as string;
+        }
+
+        private void btnAnalyse_Click(object sender, RoutedEventArgs e)
+        {
+            datas.Clear();
+            lvAnalytic.ItemsSource = null;
+            using (var context = new MyDbContext())
+            {
+                List<SchoolYear> schoolYears = context.SchoolYears.ToList();
+                List<Subject> subjects = context.Subjects.ToList();
+                List<int> yearId = new List<int>();
+                foreach (var schoolYear in schoolYears)
+                {
+                    yearId.Add(schoolYear.Id);
+                }
+
+                foreach (var id in yearId)
+                {
+                    var schoolYear = context.SchoolYears.FirstOrDefault(s => s.Id == id);
+                    long studentCount = context.Students.Count(student => student.SchoolYear.Id == id);
+                    long mathCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 1 && s.Result >= 0);
+                    long literatureCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 2 && s.Result >= 0);
+                    long physicsCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 3 && s.Result >= 0);
+                    long biologyCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 4 && s.Result >= 0);
+                    long englishCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 5 && s.Result >= 0);
+                    long chemistryCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 6 && s.Result >= 0);
+                    long historyCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 7 && s.Result >= 0);
+                    long geographyCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 8 && s.Result >= 0);
+                    long civicEducationCount = context.Scores.Count(s => s.Student.SchoolYearId == id && s.SubjectId == 9 && s.Result >= 0);
+
+                    datas.Add(new AnalyseData(schoolYear.Name, studentCount, mathCount, literatureCount, physicsCount, biologyCount, englishCount, chemistryCount, historyCount, geographyCount, civicEducationCount));
+                }
+            }
+            lvAnalytic.ItemsSource = datas;
+        }
+
+        private void btnImportAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (txtPath.Text.Equals(""))
+            {
+                MessageBox.Show("Please select .csv file to import.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            importedItems.Clear();
+            AddAllDataToDatabase(csvData);
+        }
+
+        private void AddAllDataToDatabase(List<string[]> importedItems)
+        {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+            // Improve performance using Z.EntityFramework.Extensions.EF
+            using (var context = new MyDbContext())
+            {
+                // Disable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+                foreach (string year in comboBoxItems)
+                {
+                    if (context.SchoolYears.Any(sy => sy.Name == year))
+                    {
+                        MessageBox.Show($"Data in '{year}' already exists, you can clear and import again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
+                // Create a list of subjects
+                List<Subject> subjects = new List<Subject>
+        {
+            new Subject { Code = "Math", Name = csvData[0][1] },
+            new Subject { Code = "Literature", Name = csvData[0][2] },
+            new Subject { Code = "Physics", Name = csvData[0][3] },
+            new Subject { Code = "Biology", Name = csvData[0][4] },
+            new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+            new Subject { Code = "Chemistry", Name = csvData[0][7] },
+            new Subject { Code = "History", Name = csvData[0][8] },
+            new Subject { Code = "Geography", Name = csvData[0][9] },
+            new Subject { Code = "CivicEducation", Name = csvData[0][10] },
+        };
+
+                // Check and add subjects
+                foreach (var subject in subjects)
+                {
+                    if (!context.Subjects.Any(s => s.Code == subject.Code))
+                    {
+                        context.Subjects.Add(subject);
+                    }
+                }
+
+                // Create a new school year
+                foreach (string year in comboBoxItems)
+                {
+                    var schoolYear = new SchoolYear
+                    {
+                        Name = year,
+                        ExamYear = year,
+                        Status = true
+                    };
+
+                    context.SchoolYears.Add(schoolYear);
+                }
+
+                // Save changes to commit the subjects and school year to the database
+                context.SaveChanges();
+
+                // Fetch all subjects from the database
+                List<Subject> allSubjects = context.Subjects.ToList();
+
+                // Fetch all SchoolYear from the database
+                List<SchoolYear> allSchoolYears = context.SchoolYears.ToList();
+
+                var students = new List<Student>();
+                var scores = new List<Score>();
+
+                int batchSize = 1000; // Adjust the batch size based on your system's capacity
+
+                // Process and insert data in batches
+                for (int i = 1; i < importedItems.Count; i += batchSize)
+                {
+                    var batchItems = importedItems.Skip(i).Take(batchSize);
+
+                    foreach (var row in batchItems)
+                    {
+                        foreach (var year in allSchoolYears)
+                        {
+                            if (year.Name.Equals(row[6]))
+                            {
+                                var student = new Student
+                                {
+                                    StudentCode = row[0],
+                                    SchoolYear = year
+                                };
+
+                                students.Add(student);
+
+                                for (int j = 1; j <= 10; j++)
+                                {
+                                    if (j != 6)
+                                    {
+                                        double rowScore = -1;
+                                        if (!row[j].Equals(""))
+                                        {
+                                            rowScore = double.Parse(row[j]);
+                                        }
+
+                                        // Assuming subjects is a List<Subject> to store the fetched subjects
+                                        Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+
+                                        var score = new Score
+                                        {
+                                            Result = rowScore,
+                                            Subject = subjectToAdd,
+                                            Student = student
+                                        };
+
+                                        scores.Add(score);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Bulk insert students
+                    context.BulkInsert(students);
+
+                    // Bulk insert scores
+                    context.BulkInsert(scores);
+
+                    // Clear the lists for the next batch
+                    students.Clear();
+                    scores.Clear();
+                }
+
+                // Enable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
+            }
+            stopWatch.Stop();
+
+            // Get the elapsed time as a TimeSpan value.
+            TimeSpan ts = stopWatch.Elapsed;
+
+            // Format and display the TimeSpan value.
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+            MessageBox.Show($"All of data saved in database in {elapsedTime}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
