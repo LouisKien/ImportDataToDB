@@ -358,16 +358,23 @@ namespace ImportDataToDB
             AddAllDataToDatabase(csvData);
         }
 
-        private void AddAllDataToDatabase(List<string[]> importedItems)
+        private async Task AddAllDataToDatabase(List<string[]> importedItems)
         {
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
-            // Improve performance using Z.EntityFramework.Extensions.EF
+
             using (var context = new MyDbContext())
             {
                 // Disable AutoDetectChanges
                 context.ChangeTracker.AutoDetectChangesEnabled = false;
 
+                // Fetch all subjects from the database
+                List<Subject> allSubjects = context.Subjects.ToList();
+
+                // Fetch all SchoolYear from the database
+                List<SchoolYear> allSchoolYears = context.SchoolYears.ToList();
+
+                // Check for existing school years
                 foreach (string year in comboBoxItems)
                 {
                     if (context.SchoolYears.Any(sy => sy.Name == year))
@@ -379,24 +386,26 @@ namespace ImportDataToDB
 
                 // Create a list of subjects
                 List<Subject> subjects = new List<Subject>
-        {
-            new Subject { Code = "Math", Name = csvData[0][1] },
-            new Subject { Code = "Literature", Name = csvData[0][2] },
-            new Subject { Code = "Physics", Name = csvData[0][3] },
-            new Subject { Code = "Biology", Name = csvData[0][4] },
-            new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
-            new Subject { Code = "Chemistry", Name = csvData[0][7] },
-            new Subject { Code = "History", Name = csvData[0][8] },
-            new Subject { Code = "Geography", Name = csvData[0][9] },
-            new Subject { Code = "CivicEducation", Name = csvData[0][10] },
-        };
+                {
+                    new Subject { Code = "Math", Name = csvData[0][1] },
+                    new Subject { Code = "Literature", Name = csvData[0][2] },
+                    new Subject { Code = "Physics", Name = csvData[0][3] },
+                    new Subject { Code = "Biology", Name = csvData[0][4] },
+                    new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+                    new Subject { Code = "Chemistry", Name = csvData[0][7] },
+                    new Subject { Code = "History", Name = csvData[0][8] },
+                    new Subject { Code = "Geography", Name = csvData[0][9] },
+                    new Subject { Code = "CivicEducation", Name = csvData[0][10] },
+                };
+
 
                 // Check and add subjects
                 foreach (var subject in subjects)
                 {
-                    if (!context.Subjects.Any(s => s.Code == subject.Code))
+                    if (!allSubjects.Any(s => s.Code == subject.Code))
                     {
                         context.Subjects.Add(subject);
+                        allSubjects.Add(subject);
                     }
                 }
 
@@ -411,21 +420,16 @@ namespace ImportDataToDB
                     };
 
                     context.SchoolYears.Add(schoolYear);
+                    allSchoolYears.Add(schoolYear);
                 }
 
                 // Save changes to commit the subjects and school year to the database
-                context.SaveChanges();
-
-                // Fetch all subjects from the database
-                List<Subject> allSubjects = context.Subjects.ToList();
-
-                // Fetch all SchoolYear from the database
-                List<SchoolYear> allSchoolYears = context.SchoolYears.ToList();
+                await context.SaveChangesAsync();
 
                 var students = new List<Student>();
                 var scores = new List<Score>();
 
-                int batchSize = 1000; // Adjust the batch size based on your system's capacity
+                int batchSize = 50000; // Adjust the batch size based on your system's capacity
 
                 // Process and insert data in batches
                 for (int i = 1; i < importedItems.Count; i += batchSize)
@@ -456,7 +460,6 @@ namespace ImportDataToDB
                                             rowScore = double.Parse(row[j]);
                                         }
 
-                                        // Assuming subjects is a List<Subject> to store the fetched subjects
                                         Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
 
                                         var score = new Score
@@ -474,10 +477,10 @@ namespace ImportDataToDB
                     }
 
                     // Bulk insert students
-                    context.BulkInsert(students);
+                    await context.BulkInsertAsync(students);
 
                     // Bulk insert scores
-                    context.BulkInsert(scores);
+                    await context.BulkInsertAsync(scores);
 
                     // Clear the lists for the next batch
                     students.Clear();
@@ -487,6 +490,7 @@ namespace ImportDataToDB
                 // Enable AutoDetectChanges
                 context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
+
             stopWatch.Stop();
 
             // Get the elapsed time as a TimeSpan value.
@@ -494,7 +498,7 @@ namespace ImportDataToDB
 
             // Format and display the TimeSpan value.
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            MessageBox.Show($"All of data saved in database in {elapsedTime}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"All data saved in the database in {elapsedTime}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
