@@ -116,32 +116,25 @@ namespace ImportDataToDB
             importedItems.Clear();
             for(int i = 0; i < csvData.Count; i++)
             {
-                if (csvData[i][6].Equals(this.selectedYear))
+                if (csvData[i][6].Equals(this.selectedYear) || csvData[i][6].Equals("Year"))
                 {
                     importedItems.Add(csvData[i]);
                 }
             }
-            MessageBox.Show(importedItems[0][1].ToString());
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
             AddDataToDatabase(importedItems);
-            stopWatch.Stop();
-
-            // Get the elapsed time as a TimeSpan value.
-            TimeSpan ts = stopWatch.Elapsed;
-
-            // Format and display the TimeSpan value.
-            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            MessageBox.Show($"Insert time: {elapsedTime}");
         }
 
         private void AddDataToDatabase(List<string[]> importedItems)
         {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             // Improve performance using Z.EntityFramework.Extensions.EF
             using (var context = new MyDbContext())
             {
                 // Disable AutoDetectChanges
                 context.ChangeTracker.AutoDetectChangesEnabled = false;
+
                 // Check if the SchoolYear with the given name already exists
                 string schoolYearName = importedItems[1][6];
                 if (context.SchoolYears.Any(sy => sy.Name == schoolYearName))
@@ -152,17 +145,17 @@ namespace ImportDataToDB
 
                 // Create a list of subjects
                 List<Subject> subjects = new List<Subject>
-                {
-                    new Subject { Code = "Math", Name = csvData[0][1] },
-                    new Subject { Code = "Literature", Name = csvData[0][2] },
-                    new Subject { Code = "Physics", Name = csvData[0][3] },
-                    new Subject { Code = "Biology", Name = csvData[0][4] },
-                    new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
-                    new Subject { Code = "Chemistry", Name = csvData[0][7] },
-                    new Subject { Code = "History", Name = csvData[0][8] },
-                    new Subject { Code = "Geography", Name = csvData[0][9] },
-                    new Subject { Code = "CivicEducation", Name = csvData[0][10] },
-                };
+        {
+            new Subject { Code = "Math", Name = csvData[0][1] },
+            new Subject { Code = "Literature", Name = csvData[0][2] },
+            new Subject { Code = "Physics", Name = csvData[0][3] },
+            new Subject { Code = "Biology", Name = csvData[0][4] },
+            new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+            new Subject { Code = "Chemistry", Name = csvData[0][7] },
+            new Subject { Code = "History", Name = csvData[0][8] },
+            new Subject { Code = "Geography", Name = csvData[0][9] },
+            new Subject { Code = "CivicEducation", Name = csvData[0][10] },
+        };
 
                 // Check and add subjects
                 foreach (var subject in subjects)
@@ -192,52 +185,71 @@ namespace ImportDataToDB
                 var students = new List<Student>();
                 var scores = new List<Score>();
 
-                foreach (var row in importedItems)
+                int batchSize = 100000;
+
+                int totalStudents = importedItems.Count - 1; // Excluding header
+                for (int i = 1; i <= totalStudents; i += batchSize)
                 {
-                    var student = new Student
-                    {
-                        StudentCode = row[0],
-                        SchoolYear = schoolYear
-                    };
+                    var batchItems = importedItems.Skip(i).Take(batchSize);
 
-                    students.Add(student);
-
-                    for (int i = 1; i <= 10; i++)
+                    foreach (var row in batchItems)
                     {
-                        if (i != 6)
+                        var student = new Student
                         {
-                            double rowScore = -1;
-                            if (!row[i].Equals(""))
+                            StudentCode = row[0],
+                            SchoolYear = schoolYear
+                        };
+
+                        students.Add(student);
+
+                        for (int j = 1; j <= 10; j++)
+                        {
+                            if (j != 6)
                             {
-                                rowScore = double.Parse(row[i]);
+                                double rowScore = -1;
+                                if (!row[j].Equals(""))
+                                {
+                                    rowScore = double.Parse(row[j]);
+                                }
+
+                                // Assuming subjects is a List<Subject> to store the fetched subjects
+                                Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+
+                                var score = new Score
+                                {
+                                    Result = rowScore,
+                                    Subject = subjectToAdd,
+                                    Student = student
+                                };
+
+                                scores.Add(score);
                             }
-
-                            // Assuming subjects is a List<Subject> to store the fetched subjects
-                            Subject subjectToAdd = i > 6 ? allSubjects[i - 2] : allSubjects[i - 1];
-
-                            var score = new Score
-                            {
-                                Result = rowScore,
-                                Subject = subjectToAdd,
-                                Student = student
-                            };
-
-                            scores.Add(score);
                         }
                     }
+
+                    // Bulk insert students
+                    context.BulkInsert(students);
+
+                    // Bulk insert scores
+                    context.BulkInsert(scores);
+
+                    // Clear lists for the next batch
+                    students.Clear();
+                    scores.Clear();
                 }
-
-                // Bulk insert students
-                context.BulkInsert(students);
-
-                // Bulk insert scores
-                context.BulkInsert(scores);
 
                 // Enable AutoDetectChanges
                 context.ChangeTracker.AutoDetectChangesEnabled = true;
-
-                MessageBox.Show($"Data of {schoolYearName} saved in database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+
+            stopWatch.Stop();
+
+            // Get the elapsed time as a TimeSpan value.
+            TimeSpan ts = stopWatch.Elapsed;
+
+            // Format and display the TimeSpan value.
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+            MessageBox.Show($"All data saved in the database in {elapsedTime}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void btnClear_Click(object sender, RoutedEventArgs e)
