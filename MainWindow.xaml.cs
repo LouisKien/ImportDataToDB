@@ -320,6 +320,12 @@ namespace ImportDataToDB
             using (var context = new MyDbContext())
             {
                 List<SchoolYear> schoolYears = context.SchoolYears.ToList();
+
+                if(schoolYears.Count == 0)
+                {
+                    MessageBox.Show("No data to analyse.");
+                }
+
                 List<Subject> subjects = context.Subjects.ToList();
                 List<int> yearId = new List<int>();
                 foreach (var schoolYear in schoolYears)
@@ -379,17 +385,17 @@ namespace ImportDataToDB
 
                 // Create a list of subjects
                 List<Subject> subjects = new List<Subject>
-        {
-            new Subject { Code = "Math", Name = csvData[0][1] },
-            new Subject { Code = "Literature", Name = csvData[0][2] },
-            new Subject { Code = "Physics", Name = csvData[0][3] },
-            new Subject { Code = "Biology", Name = csvData[0][4] },
-            new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
-            new Subject { Code = "Chemistry", Name = csvData[0][7] },
-            new Subject { Code = "History", Name = csvData[0][8] },
-            new Subject { Code = "Geography", Name = csvData[0][9] },
-            new Subject { Code = "CivicEducation", Name = csvData[0][10] },
-        };
+                {
+                    new Subject { Code = "Math", Name = csvData[0][1] },
+                    new Subject { Code = "Literature", Name = csvData[0][2] },
+                    new Subject { Code = "Physics", Name = csvData[0][3] },
+                    new Subject { Code = "Biology", Name = csvData[0][4] },
+                    new Subject { Code = "ForeignLanguage", Name = csvData[0][5] },
+                    new Subject { Code = "Chemistry", Name = csvData[0][7] },
+                    new Subject { Code = "History", Name = csvData[0][8] },
+                    new Subject { Code = "Geography", Name = csvData[0][9] },
+                    new Subject { Code = "CivicEducation", Name = csvData[0][10] },
+                };
 
                 // Check and add subjects
                 foreach (var subject in subjects)
@@ -495,6 +501,17 @@ namespace ImportDataToDB
             // Format and display the TimeSpan value.
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
             MessageBox.Show($"All of data saved in database in {elapsedTime}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void btnStats_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(selectedYear))
+            {
+                MessageBox.Show("Please import data and select year first.");
+                return;
+            }
+            Statistics statistics = new Statistics(selectedYear);
+            statistics.Show();
         }
     }
 }

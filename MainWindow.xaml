@@ -10,8 +10,8 @@
         <ComboBox x:Name="cbYear" HorizontalAlignment="Center" Margin="0,47,0,0" VerticalAlignment="Top" Width="400" Height="30" SelectionChanged="ComboBoxSchoolYears_SelectionChanged"/>
         <TextBox x:Name="txtPath" HorizontalAlignment="Left" Margin="200,117,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="320" Height="30" FontSize="15" IsReadOnly="True"/>
         <Button x:Name="btnBrowse" Content="Browse" HorizontalAlignment="Left" Margin="525,117,0,0" VerticalAlignment="Top" Height="30" Width="75" FontSize="15" FontWeight="Bold" Click="btnBrowse_Click"/>
-        <Button x:Name="btnImport" Content="Import" HorizontalAlignment="Left" Margin="200,187,0,0" VerticalAlignment="Top" Width="75" Height="30" FontSize="15" FontWeight="Bold" Click="btnImport_Click"/>
-        <Button x:Name="btnClear" Content="Clear" HorizontalAlignment="Left" Margin="526,187,0,0" VerticalAlignment="Top" Height="30" Width="74" FontSize="15" FontWeight="Bold" Click="btnClear_Click"/>
+        <Button x:Name="btnImport" Content="Import" HorizontalAlignment="Left" Margin="80,187,0,0" VerticalAlignment="Top" Width="75" Height="30" FontSize="15" FontWeight="Bold" Click="btnImport_Click"/>
+        <Button x:Name="btnClear" Content="Clear" HorizontalAlignment="Left" Margin="646,187,0,0" VerticalAlignment="Top" Height="30" Width="74" FontSize="15" FontWeight="Bold" Click="btnClear_Click"/>
         <ListView x:Name="lvAnalytic" Margin="80,237,80,20">
             <ListView.View>
                 <GridView>
@@ -29,8 +29,9 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Button x:Name="btnAnalyse" Content="Analyse" HorizontalAlignment="Left" Margin="420,187,0,0" VerticalAlignment="Top" Width="74" Height="30" FontWeight="Bold" FontSize="15" Click="btnAnalyse_Click"/>
-        <Button x:Name="btnImportAll" Content="Import All" HorizontalAlignment="Left" Margin="310,187,0,0" VerticalAlignment="Top" Width="75" Height="30" FontSize="15" FontWeight="Bold" Click="btnImportAll_Click"/>
+        <Button x:Name="btnAnalyse" Content="Analyse" HorizontalAlignment="Left" Margin="535,187,0,0" VerticalAlignment="Top" Width="74" Height="30" FontWeight="Bold" FontSize="15" Click="btnAnalyse_Click"/>
+        <Button x:Name="btnImportAll" Content="Import All" HorizontalAlignment="Left" Margin="190,187,0,0" VerticalAlignment="Top" Width="75" Height="30" FontSize="15" FontWeight="Bold" Click="btnImportAll_Click"/>
+        <Button x:Name="btnStats" Content="View Valedictorian Statistics" HorizontalAlignment="Center" Margin="0,187,0,0" VerticalAlignment="Top" Height="30" FontWeight="Bold" FontSize="15" Width="204" Click="btnStats_Click"/>
 
     </Grid>
 </Window>
