@@ -92,7 +92,6 @@ namespace ImportDataToDB
     .OrderByDescending(totalScore => totalScore);
 
                 string sql = query.ToString();
-                MessageBox.Show(sql);
             }
             return scores;
         }
