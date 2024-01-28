@@ -11,8 +11,10 @@ namespace ImportDataToDB.Entity
         public int Id { get; set; }
         public string StudentCode { get; set; }
         public int SchoolYearId { get; set; }
+        public int MaTinh { get; set; }
         public bool Status { get; set; }
         public SchoolYear SchoolYear { get; set; }
+        public Province Province { get; set; }
         public ICollection<Score> Scores { get; set; }
     }
 }

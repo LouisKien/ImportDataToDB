@@ -15,6 +15,7 @@ namespace ImportDataToDB.Repository
         public DbSet<Score> Scores { get; set; }
         public DbSet<Subject> Subjects { get; set; }
         public DbSet<Student> Students { get; set; }
+        public DbSet<Province> Provinces { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -38,6 +39,11 @@ namespace ImportDataToDB.Repository
                 .HasOne(sc => sc.Subject)
                 .WithMany(sub => sub.Scores)
                 .HasForeignKey(sc => sc.SubjectId);
+
+            modelBuilder.Entity<Student>()
+            .HasOne(s => s.Province)
+            .WithMany(p => p.Students)
+            .HasForeignKey(s => s.MaTinh);
         }
     }
 }

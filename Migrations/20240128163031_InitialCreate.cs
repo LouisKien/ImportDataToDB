@@ -9,6 +9,19 @@ namespace ImportDataToDB.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "Provinces",
+                columns: table => new
+                {
+                    MaTinh = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TenTinh = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Provinces", x => x.MaTinh);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "SchoolYears",
                 columns: table => new
                 {
@@ -45,11 +58,18 @@ namespace ImportDataToDB.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     StudentCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     SchoolYearId = table.Column<int>(type: "int", nullable: false),
+                    MaTinh = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Students", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Students_Provinces_MaTinh",
+                        column: x => x.MaTinh,
+                        principalTable: "Provinces",
+                        principalColumn: "MaTinh",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Students_SchoolYears_SchoolYearId",
                         column: x => x.SchoolYearId,
@@ -96,6 +116,11 @@ namespace ImportDataToDB.Migrations
                 column: "SubjectId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Students_MaTinh",
+                table: "Students",
+                column: "MaTinh");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Students_SchoolYearId",
                 table: "Students",
                 column: "SchoolYearId");
@@ -111,6 +136,9 @@ namespace ImportDataToDB.Migrations
 
             migrationBuilder.DropTable(
                 name: "Subjects");
+
+            migrationBuilder.DropTable(
+                name: "Provinces");
 
             migrationBuilder.DropTable(
                 name: "SchoolYears");

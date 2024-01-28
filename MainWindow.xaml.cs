@@ -19,6 +19,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Linq;
+using System;
 
 
 namespace ImportDataToDB
@@ -41,6 +42,60 @@ namespace ImportDataToDB
             {
                 context.Database.EnsureDeleted();
                 context.Database.Migrate();
+            }
+            AddProvinceToDatabase();
+        }
+
+        private List<string[]> ReadProvinceCsv()
+        {
+            string filePath = System.IO.Path.Combine(System.IO.Path.GetFullPath(@"..\..\..\"), "Tinh.csv");
+
+            var csvData = new List<string[]>();
+
+            object lockObject = new object();
+
+            // Read all lines
+            var allLines = File.ReadAllLines(filePath);
+
+            // Read remaining lines in parallel
+            Parallel.ForEach(allLines.Skip(1), line =>
+            {
+                // Parse fields from the line
+                var fields = line.Split(',');
+
+                // Use a lock to ensure thread safety when modifying collections
+                lock (lockObject)
+                {
+                    // Add the fields to csvData
+                    csvData.Add(fields);
+                }
+            });
+            return csvData;
+        }
+
+        private void AddProvinceToDatabase()
+        {
+            List<string[]> provinceList = ReadProvinceCsv();
+
+            using (var context = new MyDbContext())
+            {
+                // Disable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+                var provinces = new List<Province>();
+
+                for (int i = 0; i < provinceList.Count; i++)
+                {
+                    var province = new Province
+                    {
+                        MaTinh = int.Parse(provinceList[i][0]),
+                        TenTinh = provinceList[i][1]
+                    };
+                    provinces.Add(province);
+                }
+                context.BulkInsert(provinces);
+                // Enable AutoDetectChanges
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
         }
 
@@ -140,6 +195,8 @@ namespace ImportDataToDB
                 // Fetch all SchoolYear from the database asynchronously
                 List<SchoolYear> allSchoolYears = await context.SchoolYears.ToListAsync();
 
+                List<Province> allProvinces = await context.Provinces.ToListAsync();
+
                 // Check for existing school years
                 if (context.SchoolYears.Any(sy => sy.Name == selectedYear))
                 {
@@ -199,41 +256,45 @@ namespace ImportDataToDB
                     {
                         foreach (var year in allSchoolYears)
                         {
-                            if (year.ExamYear.Equals(selectedYear) && year.Name.Equals(row[6]))
+                            foreach(var province in allProvinces)
                             {
-                                var student = new Student
+                                if (year.ExamYear.Equals(selectedYear) && year.Name.Equals(row[6]) && province.MaTinh == int.Parse(row[11]))
                                 {
-                                    StudentCode = row[0],
-                                    SchoolYear = year
-                                };
-
-                                lock (localStudents)
-                                {
-                                    localStudents.Add(student);
-                                }
-
-                                for (int j = 1; j <= 10; j++)
-                                {
-                                    if (j != 6)
+                                    var student = new Student
                                     {
-                                        double rowScore = -1;
-                                        if (!row[j].Equals(""))
-                                        {
-                                            rowScore = double.Parse(row[j]);
-                                        }
+                                        StudentCode = row[0],
+                                        SchoolYear = year,
+                                        Province = province
+                                    };
 
-                                        Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+                                    lock (localStudents)
+                                    {
+                                        localStudents.Add(student);
+                                    }
 
-                                        var score = new Score
+                                    for (int j = 1; j <= 10; j++)
+                                    {
+                                        if (j != 6)
                                         {
-                                            Result = rowScore,
-                                            Subject = subjectToAdd,
-                                            Student = student
-                                        };
+                                            double rowScore = -1;
+                                            if (!row[j].Equals(""))
+                                            {
+                                                rowScore = double.Parse(row[j]);
+                                            }
 
-                                        lock (localScores)
-                                        {
-                                            localScores.Add(score);
+                                            Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+
+                                            var score = new Score
+                                            {
+                                                Result = rowScore,
+                                                Subject = subjectToAdd,
+                                                Student = student
+                                            };
+
+                                            lock (localScores)
+                                            {
+                                                localScores.Add(score);
+                                            }
                                         }
                                     }
                                 }
@@ -272,8 +333,6 @@ namespace ImportDataToDB
                 MessageBox.Show("Please select .csv file to import.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
 
             // Assuming your ComboBox is named comboBoxYear
             var selectedYear = this.selectedYear;
@@ -291,6 +350,8 @@ namespace ImportDataToDB
 
                 if (schoolYearToDelete != null)
                 {
+                    Stopwatch stopWatch = new Stopwatch();
+                    stopWatch.Start();
                     // Increase command timeout
                     context.Database.SetCommandTimeout(300); // Set a timeout in seconds (e.g., 300 seconds = 5 minutes)
 
@@ -318,18 +379,21 @@ namespace ImportDataToDB
 
                     // Save changes to commit the deletions to the database
                     context.SaveChanges();
+                    MessageBox.Show($"All data of {cbYear.Text} has been deleted.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                    stopWatch.Stop();
+
+                    // Get the elapsed time as a TimeSpan value.
+                    TimeSpan ts = stopWatch.Elapsed;
+
+                    // Format and display the TimeSpan value.
+                    string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+                    MessageBox.Show($"Delete time: {elapsedTime}");
+                } else
+                {
+                    MessageBox.Show($"Data of {selectedYear} does not exist.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
             }
-
-            MessageBox.Show($"All data of {cbYear.Text} has been deleted.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-            stopWatch.Stop();
-
-            // Get the elapsed time as a TimeSpan value.
-            TimeSpan ts = stopWatch.Elapsed;
-
-            // Format and display the TimeSpan value.
-            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            MessageBox.Show($"Delete time: {elapsedTime}");
         }
 
         private void ComboBoxSchoolYears_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -346,7 +410,7 @@ namespace ImportDataToDB
             {
                 List<SchoolYear> schoolYears = context.SchoolYears.ToList();
 
-                if(schoolYears.Count == 0)
+                if (schoolYears.Count == 0)
                 {
                     MessageBox.Show("No data to analyse.");
                 }
@@ -404,6 +468,8 @@ namespace ImportDataToDB
 
                 // Fetch all SchoolYear from the database asynchronously
                 List<SchoolYear> allSchoolYears = await context.SchoolYears.ToListAsync();
+
+                List<Province> allProvinces = await context.Provinces.ToListAsync();
 
                 // Check for existing school years
                 foreach (string year in comboBoxItems)
@@ -470,41 +536,45 @@ namespace ImportDataToDB
                     {
                         foreach (var year in allSchoolYears)
                         {
-                            if (year.Name.Equals(row[6]))
+                            foreach(var province in allProvinces)
                             {
-                                var student = new Student
+                                if (year.Name.Equals(row[6]) && province.MaTinh == int.Parse(row[11]))
                                 {
-                                    StudentCode = row[0],
-                                    SchoolYear = year
-                                };
-
-                                lock (localStudents)
-                                {
-                                    localStudents.Add(student);
-                                }
-
-                                for (int j = 1; j <= 10; j++)
-                                {
-                                    if (j != 6)
+                                    var student = new Student
                                     {
-                                        double rowScore = -1;
-                                        if (!row[j].Equals(""))
-                                        {
-                                            rowScore = double.Parse(row[j]);
-                                        }
+                                        StudentCode = row[0],
+                                        SchoolYear = year,
+                                        Province = province
+                                    };
 
-                                        Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+                                    lock (localStudents)
+                                    {
+                                        localStudents.Add(student);
+                                    }
 
-                                        var score = new Score
+                                    for (int j = 1; j <= 10; j++)
+                                    {
+                                        if (j != 6)
                                         {
-                                            Result = rowScore,
-                                            Subject = subjectToAdd,
-                                            Student = student
-                                        };
+                                            double rowScore = -1;
+                                            if (!row[j].Equals(""))
+                                            {
+                                                rowScore = double.Parse(row[j]);
+                                            }
 
-                                        lock (localScores)
-                                        {
-                                            localScores.Add(score);
+                                            Subject subjectToAdd = j > 6 ? allSubjects[j - 2] : allSubjects[j - 1];
+
+                                            var score = new Score
+                                            {
+                                                Result = rowScore,
+                                                Subject = subjectToAdd,
+                                                Student = student
+                                            };
+
+                                            lock (localScores)
+                                            {
+                                                localScores.Add(score);
+                                            }
                                         }
                                     }
                                 }
@@ -542,6 +612,14 @@ namespace ImportDataToDB
             {
                 MessageBox.Show("Please import data and select year first.");
                 return;
+            }
+            using (var context = new MyDbContext()) { 
+                List<SchoolYear> schoolYears = context.SchoolYears.ToList();
+                if (context.SchoolYears.Where(y => selectedYear.Contains(y.ExamYear)).ToList().Count == 0)
+                {
+                    MessageBox.Show($"{selectedYear} has no data to view Valedictorian Statistics.");
+                    return;
+                }
             }
             Statistics statistics = new Statistics(selectedYear);
             statistics.Show();

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ImportDataToDB.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-    [Migration("20240119160353_InitialCreate")]
+    [Migration("20240128163031_InitialCreate")]
     partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +23,23 @@ namespace ImportDataToDB.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+
+            modelBuilder.Entity("ImportDataToDB.Entity.Province", b =>
+                {
+                    b.Property<int>("MaTinh")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaTinh"), 1L, 1);
+
+                    b.Property<string>("TenTinh")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MaTinh");
+
+                    b.ToTable("Provinces");
+                });
 
             modelBuilder.Entity("ImportDataToDB.Entity.SchoolYear", b =>
                 {
@@ -82,6 +99,9 @@ namespace ImportDataToDB.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
+                    b.Property<int>("MaTinh")
+                        .HasColumnType("int");
+
                     b.Property<int>("SchoolYearId")
                         .HasColumnType("int");
 
@@ -93,6 +113,8 @@ namespace ImportDataToDB.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MaTinh");
 
                     b.HasIndex("SchoolYearId");
 
@@ -141,13 +163,26 @@ namespace ImportDataToDB.Migrations
 
             modelBuilder.Entity("ImportDataToDB.Entity.Student", b =>
                 {
+                    b.HasOne("ImportDataToDB.Entity.Province", "Province")
+                        .WithMany("Students")
+                        .HasForeignKey("MaTinh")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ImportDataToDB.Entity.SchoolYear", "SchoolYear")
                         .WithMany("Students")
                         .HasForeignKey("SchoolYearId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Province");
+
                     b.Navigation("SchoolYear");
+                });
+
+            modelBuilder.Entity("ImportDataToDB.Entity.Province", b =>
+                {
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("ImportDataToDB.Entity.SchoolYear", b =>
