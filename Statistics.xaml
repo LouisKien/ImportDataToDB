@@ -14,11 +14,11 @@
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Year" DisplayMemberBinding="{Binding year}"/>
-                    <GridViewColumn Header="A00 (Toán, Lý, Hóa)" DisplayMemberBinding="{Binding studentCount}"/>
-                    <GridViewColumn Header="B00 (Toán, Hóa, Sinh)" DisplayMemberBinding="{Binding mathematicsCount}"/>
-                    <GridViewColumn Header="C00 (Văn, Sử, Địa)" DisplayMemberBinding="{Binding litetureCount}"/>
-                    <GridViewColumn Header="D01 (Toán, Văn, Anh)" DisplayMemberBinding="{Binding physicsCount}"/>
-                    <GridViewColumn Header="A01 (Toán, Lý, Anh)" DisplayMemberBinding="{Binding biologyCount}"/>
+                    <GridViewColumn Header="A00 (Toán, Lý, Hóa)" DisplayMemberBinding="{Binding a00}"/>
+                    <GridViewColumn Header="B00 (Toán, Hóa, Sinh)" DisplayMemberBinding="{Binding b00}"/>
+                    <GridViewColumn Header="C00 (Văn, Sử, Địa)" DisplayMemberBinding="{Binding c00}"/>
+                    <GridViewColumn Header="D01 (Toán, Văn, Anh)" DisplayMemberBinding="{Binding d01}"/>
+                    <GridViewColumn Header="A01 (Toán, Lý, Anh)" DisplayMemberBinding="{Binding a01}"/>
                 </GridView>
             </ListView.View>
         </ListView>
