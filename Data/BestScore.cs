@@ -18,11 +18,16 @@ namespace ImportDataToDB.Data
         public BestScore(string year, double? a00, double? b00, double? c00, double? d01, double? a01)
         {
             this.year = year;
-            this.a00 = a00;
-            this.b00 = b00;
-            this.c00 = c00;
-            this.d01 = d01;
-            this.a01 = a01;
+            this.a00 = RoundToTwoDecimalPlaces(a00);
+            this.b00 = RoundToTwoDecimalPlaces(b00);
+            this.c00 = RoundToTwoDecimalPlaces(c00);
+            this.d01 = RoundToTwoDecimalPlaces(d01);
+            this.a01 = RoundToTwoDecimalPlaces(a01);
+        }
+
+        private double? RoundToTwoDecimalPlaces(double? value)
+        {
+            return value.HasValue ? Math.Round(value.Value, 2) : (double?)null;
         }
     }
 }

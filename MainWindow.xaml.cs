@@ -522,7 +522,7 @@ namespace ImportDataToDB
                 // Save changes to commit the subjects and school year to the database asynchronously
                 await context.SaveChangesAsync();
 
-                int batchSize = 100000; // Adjust the batch size based on your system's capacity
+                int batchSize = 100000000; // Adjust the batch size based on your system's capacity
 
                 // Process and insert data in batches asynchronously
                 for (int i = 1; i < importedItems.Count; i += batchSize)
