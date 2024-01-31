@@ -42,6 +42,7 @@ namespace ImportDataToDB
             {
                 context.Database.EnsureDeleted();
                 context.Database.Migrate();
+                context.Database.SetCommandTimeout(3600);
             }
             AddProvinceToDatabase();
         }

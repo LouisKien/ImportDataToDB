@@ -1,6 +1,7 @@
 ﻿using ImportDataToDB.Data;
 using ImportDataToDB.Entity;
 using ImportDataToDB.Repository;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,6 +42,8 @@ namespace ImportDataToDB
 
             using (var context = new MyDbContext())
             {
+                context.Database.SetCommandTimeout(3600);
+
                 List<SchoolYear> schoolYears = context.SchoolYears.ToList();
                 List<Province> provinces = context.Provinces.ToList();
 
